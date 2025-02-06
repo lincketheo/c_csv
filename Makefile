@@ -1,25 +1,42 @@
-BIN_TARGETS := test_csv main
-BUILD_BIN_TARGETS := ./build/bin/test_csv # $(addprefix ./build/bin/,$(BIN_TARGETS)) # Only including one so that redundant_make runs only once. Might be a better way
-CMAKE_TARGET := ./build/CMakeCache.txt
+CC       := gcc
+CFLAGS   := -Wall -std=c99 -I$(HOME)/.local/include
+LDFLAGS  := -L$(HOME)/.local/lib
+LIBS     := -lcunit
 
-all: $(BIN_TARGETS) 
+SRC      := csv.c
+OBJ      := $(SRC:.c=.o)
+TARGET   := libcsv.a
+
+TEST_SRC := test.c
+TEST_BIN := test_csv
+MAIN_SRC := main.c
+MAIN_BIN := main
+
+BUILD_DIR := build
+BIN_DIR   := $(BUILD_DIR)/bin
+LIB_DIR   := $(BUILD_DIR)/lib
+
+$(shell mkdir -p $(BIN_DIR) $(LIB_DIR))
+
+.PHONY: all clean format test
+
+all: $(LIB_DIR)/$(TARGET) $(BIN_DIR)/$(MAIN_BIN)
+
+$(LIB_DIR)/$(TARGET): $(OBJ)
+	ar rcs $@ $^
+
+$(BIN_DIR)/$(MAIN_BIN): $(MAIN_SRC) $(LIB_DIR)/$(TARGET)
+	$(CC) $(CFLAGS) $^ -o $@
+
+$(BIN_DIR)/$(TEST_BIN): $(TEST_SRC) $(LIB_DIR)/$(TARGET)
+	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@ $(LIBS)
+
+format:
+	clang-format -i *.c *.h
+
+test: $(BIN_DIR)/$(TEST_BIN)
+	$(BIN_DIR)/$(TEST_BIN)
 
 clean:
-	rm -f $(BIN_TARGETS)
-	rm -rf ./build
-	rm -f CUnitAutomated-Results.xml
-
-$(BIN_TARGETS): $(BUILD_BIN_TARGETS)
-	ln -sf $(addprefix ./build/bin/, $@) $@
-
-$(BUILD_BIN_TARGETS): $(CMAKE_TARGET) redundant_make
-
-redundant_make:
-	cd ./build && make
-
-$(CMAKE_TARGET): build
-	cd build && cmake3 ..
-
-build:
-	mkdir build
+	rm -rf $(BUILD_DIR) *.o
 
